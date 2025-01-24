@@ -1,0 +1,113 @@
+---
+title: 'HPA #2'
+author: "Anthony Fernandez"
+date: "2025-01-24"
+output: html_document
+---
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+pbp_data <- read.csv("Anonymized Baseball PBP Data.csv")
+```
+```{r}
+list(unique(pbp_data$events))
+```
+
+
+```{r}
+# Filter out rows with no events and exclude `caught_stealing_3b`
+filtered_data <- pbp_data %>%
+  filter(!is.na(events) & events != "" & events != "caught_stealing_3b")
+
+# Count batting outcomes
+event_counts <- filtered_data %>%
+  count(events) %>%
+  arrange(desc(n))
+
+# Create bar plot
+ggplot(event_counts, aes(x = reorder(events, -n), y = n, fill = events)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Distribution of Batting Outcomes",
+       x = "Event Type",
+       y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+
+
+```
+
+```{r}
+# Filter data for successful hits (e.g., singles, doubles, triples, home runs) and exclude `caught_stealing_3b`
+hit_events <- filtered_data %>%
+  filter(grepl("single|double|triple|home_run", events, ignore.case = TRUE))
+
+# Count hits by pitch zone
+zone_hit_counts <- hit_events %>%
+  count(zone) %>%
+  filter(!is.na(zone))
+
+# Create a data frame for the 3x3 pitch zone grid
+zones <- expand.grid(
+  Vertical = c("High", "Middle", "Low"),
+  Horizontal = c("Left", "Middle", "Right")
+)
+
+# Assign numeric zone IDs to match the pitch zone structure
+zones$zone <- c(1, 2, 3, 4, 5, 6, 7, 8, 9)
+
+# Merge with the hit counts
+zones <- merge(zones, zone_hit_counts, by = "zone", all.x = TRUE)
+zones$n[is.na(zones$n)] <- 0  # Replace NA with 0 for zones with no hits
+
+# Create heatmap
+ggplot(zones, aes(x = Horizontal, y = Vertical, fill = n)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = n), color = "black", size = 5) +
+  scale_fill_gradient(low = "blue", high = "red") +
+  theme_minimal() +
+  labs(
+    title = "Successful Hits by Pitch Zone",
+    x = "Horizontal Zone",
+    y = "Vertical Zone",
+    fill = "Frequency"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12)
+  )
+
+```
+
+Identify a research objective:
+
+With these two graphs, we can increase player performance by finding out where the most effective pitch zones for hitting success is. We could take this further and break it down by individual players and their results to see where their best hitting zones are.
+
+
+Create a mental model of the relationships for this research questions:
+
+a. Objective/Response Variable:
+
+  The variables would be the frequency of successful hits (aka singles, doubles, triples, homeruns).
+  
+b. Factors that are related:
+
+  Related factors would be pitch zone/location.
+  Pitch type and batter's ability to make successful contact
+  The hitters characteristics such as skill, handedness and ablity to adjust to different zones.
+  Situational factors such as what inning and what the score is.
+  Pitch velocity and movement across the zones.
+  
+c. How we could measure those factors:
+
+  Pitch zone, pitch type, hitter characteristics, game context, pitch velocity, and pitchers skill are all factors.
+  
+d. Specific metrics we could use to capture those factors:
+
+  In this data set, we could use zone, pitch_type, and release_speed to determine pitcher ability. We would use events to determine a hitters batting average, slugging and strikeout rate by zones. Lastly, we could use home_score, away_score, and inning to determine the game context of the at bat.
+
+
+
